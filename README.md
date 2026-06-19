@@ -65,12 +65,12 @@ and the log tail together.
 
 ## Common commands
 
-| Command                  | What it does                                                                                 |
-| ------------------------ | -------------------------------------------------------------------------------------------- |
-| `composer dev`           | Run Vite + queue + Pail logs together (development)                                          |
-| `npm run dev`            | Vite dev server only                                                                         |
-| `npm run build`          | Build production assets                                                                      |
-| `php artisan test`       | Run the Pest test suite (uses in-memory SQLite, no DB needed)                                |
-| `composer lint`          | Format PHP with Pint                                                                         |
-| `npm run lint`           | Lint/fix JS/Vue with oxlint + ESLint                                                         |
-| `npm run generate:types` | Regenerate `resources/js/types/api.d.ts` from the live API spec (app must be served by Herd) |
+| Command                  | What it does                                                                                                                |
+| ------------------------ | --------------------------------------------------------------------------------------------------------------------------- |
+| `composer dev`           | Run Vite + queue + Pail logs together (development)                                                                         |
+| `npm run dev`            | Vite dev server only                                                                                                        |
+| `npm run build`          | Build production assets                                                                                                     |
+| `php artisan test`       | Run the Pest test suite (uses in-memory SQLite, no DB needed)                                                               |
+| `composer lint`          | Format PHP with Pint                                                                                                        |
+| `npm run lint`           | Lint/fix JS/Vue with oxlint + ESLint                                                                                        |
+| `npm run generate:types` | Regenerate `resources/js/types/api/` (`index.d.ts` + flat `schemas.ts`) from the live API spec (app must be served by Herd) |

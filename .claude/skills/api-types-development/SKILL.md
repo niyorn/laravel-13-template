@@ -8,7 +8,7 @@ description: 'Use this skill whenever building or changing the JSON API (api.php
 This project's JSON API is typed end-to-end without hand-writing types or DTOs. The chain:
 
 ```
-api.php controller + JsonResource  →  Scramble (OpenAPI spec)  →  openapi-typescript  →  resources/js/types/api.d.ts
+api.php controller + JsonResource  →  Scramble (OpenAPI spec)  →  openapi-typescript  →  resources/js/types/api/index.d.ts
 ```
 
 `Architecture split (don't mix the two):`
@@ -64,16 +64,17 @@ serves the spec at:
 npm run generate:types
 ```
 
-This curls `/docs/api.json` and runs `openapi-typescript` → `resources/js/types/api.d.ts`. (The Vite
+This curls `/docs/api.json` and runs `openapi-typescript` → `resources/js/types/api/index.d.ts`, then
+writes the flat aliases to `resources/js/types/api/schemas.ts`. (The Vite
 build does NOT do this — run it manually after API changes, or wire it into your dev flow.)
 
 `4. Consume the types on the frontend.` openapi-typescript emits a `paths` map and reusable
 `components['schemas']`. On top of that, `generate:types` runs `scripts/generate-model-types.mjs` to
-write `resources/js/types/models.ts` — a `flat alias` per schema (`export type Post = ...`). Prefer the
+write `resources/js/types/api/schemas.ts` — a `flat alias` per schema (`export type Post = ...`). Prefer the
 flat alias for a Resource shape; only index into `paths[...]` for an exact endpoint body:
 
 ```ts
-import type { Post } from '@/types/models'; // flat alias — preferred
+import type { Post } from '@/types/api/schemas'; // flat alias — preferred
 
 // response body of GET /api/posts (only when you need the exact endpoint body):
 import type { paths } from '@/types/api';
@@ -89,11 +90,11 @@ controls the generated frontend type name:
 ```php
 use Dedoc\Scramble\Attributes\SchemaName;
 
-#[SchemaName('Post')] // → export type Post = ... in models.ts
+#[SchemaName('Post')] // → export type Post = ... in schemas.ts
 class PostResource extends JsonResource { /* ... */ }
 ```
 
-`models.ts is generated and committed` alongside `api.d.ts` — don't hand-edit it.
+`schemas.ts is generated and committed` alongside `api/index.d.ts` — don't hand-edit it.
 
 ## Getting accurate inference (the one discipline this requires)
 
@@ -118,7 +119,7 @@ keeps working when the template is copied into a differently-named project.
 To point at another environment, change `APP_URL` in `.env` before running the script (the
 script reads `.env`, so an exported shell variable alone will not override it).
 
-If `git status` shows an unexpectedly large diff in `resources/js/types/api.d.ts`, you probably
+If `git status` shows an unexpectedly large diff in `resources/js/types/api/`, you probably
 generated against the wrong backend — discard and re-run with the correct `APP_URL`.
 
 ## Gotchas
@@ -128,7 +129,7 @@ generated against the wrong backend — discard and re-run with the correct `APP
   (run `php artisan install:api` to create it; that also installs Sanctum).
 - `Keep returning Resources from api.php` — not raw models or arrays. The Resource is the response
   contract Scramble reads and types.
-- `Don't hand-edit `resources/js/types/api.d.ts```— it's overwritten by`generate:types`.
+- `Don't hand-edit `resources/js/types/api/```(`index.d.ts`or`schemas.ts`) — both are overwritten by`generate:types`.
 - Re-run `generate:types` after any API change so the frontend types update and stale usages break.
 - `laravel-data is intentionally NOT used here` — Resources + Scramble is the chosen path. (Scramble
   can document Data objects too, but we standardise on Resources.)

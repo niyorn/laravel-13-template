@@ -42,7 +42,7 @@ pre-commit:
     # nothing. Requires the app to be served (Herd) so Scramble can build the spec.
     - name: generate-api-types
       glob: '{app/Http/Resources/**/*.php,app/Http/Controllers/**/*.php,app/Http/Requests/**/*.php,app/Enums/**/*.php,routes/api.php}'
-      run: npm run generate:types && git add resources/js/types/api.d.ts
+      run: npm run generate:types && git add resources/js/types/api/index.d.ts resources/js/types/api/schemas.ts
 
 # Heavyweight, whole-project checks run before push (not on every commit):
 # both analyze across files, so per-file staged scoping would be misleading.

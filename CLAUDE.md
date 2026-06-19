@@ -363,33 +363,52 @@ route/controller/model changes outside a running dev server, run `php artisan wa
 
 The JSON API (`api.php`) is typed end-to-end: `api.php` controllers return Laravel API Resources →
 Scramble generates an OpenAPI spec at `/docs/api.json` → `openapi-typescript` writes it to
-`resources/js/types/api.d.ts`. See the `api-types-development` skill for the full workflow.
+`resources/js/types/api/index.d.ts`. See the `api-types-development` skill for the full workflow.
 
 `GOLDEN RULE: every frontend call to the JSON API MUST be typed with the generated types in
-`resources/js/types/api.d.ts`(import via`@/types/api`).` Never type an API request or response with
+`resources/js/types/api/`(import via`@/types/api`).` Never type an API request or response with
 `any`, and never hand-write an interface to describe an API payload — derive it from `@/types/api` so a
 backend change surfaces as a TypeScript error instead of a runtime surprise.
 
+`Prefer the flat schema aliases.` Every API Resource schema is re-exported as a bare type name from
+`@/types/api/schemas` (generated, see below) — use that instead of the verbose `components['schemas'][...]`
+index. Only drop down to `paths[...]` for an exact endpoint response/request body.
+
 ```ts
-import type { components, paths } from '@/types/api';
+import type { User } from '@/types/api/schemas'; // flat alias — preferred for a Resource shape
 
-// Reusable schema (a Resource):
-type User = components['schemas']['User'];
+const { data } = await useHttp().get<User>('/api/user');
+```
 
-// Exact response body of an endpoint:
+```ts
+// Only when you need the exact response body of a specific endpoint (not just the Resource):
+import type { paths } from '@/types/api';
 type UserResponse =
     paths['/user']['get']['responses']['200']['content']['application/json'];
+```
 
-const { data } = await useHttp().get('/api/user'); // annotate `data` as UserResponse
+`Flat aliases come from Scramble's schema names.` `schemas.ts` blindly turns each OpenAPI schema key
+into a bare type, so the alias name = the schema name Scramble emits. A Resource named `PostResource`
+defaults to the key `PostResource` (→ `import type { PostResource }`). To get a clean `Post` alias,
+name the schema on the Resource class with Scramble's attribute — this is the one knob that controls
+the generated frontend type name:
+
+```php
+use Dedoc\Scramble\Attributes\SchemaName;
+
+#[SchemaName('Post')] // → export type Post = ... in schemas.ts
+class PostResource extends JsonResource { /* ... */ }
 ```
 
 `How the types stay current:`
 
 - Regenerate manually with `npm run generate:types` (needs the app served by Herd — it curls the live spec).
-- The `generate-api-types` pre-commit hook auto-regenerates and stages `api.d.ts` whenever a commit
+- The `generate-api-types` pre-commit hook auto-regenerates and stages both files whenever a commit
   touches `app/Http/Resources`, `app/Http/Controllers`, `app/Http/Requests`, `app/Enums`, or `routes/api.php`.
-- `Unlike `resources/js/wayfinder/`, `api.d.ts` IS committed` — the Vite build can't rebuild it (it needs a
-  running server), so the committed copy is the source of truth. Don't hand-edit it.
+- `Unlike `resources/js/wayfinder/`, `resources/js/types/api/` IS committed` — the Vite build can't rebuild
+  it (it needs a running server), so the committed copy is the source of truth. Don't hand-edit it.
+- `generate:types` writes two files: `api/index.d.ts` (openapi-typescript output) and `api/schemas.ts`
+  (flat aliases, via `scripts/generate-model-types.mjs`). Both are generated and committed — don't hand-edit them.
 
 `Don't confuse the two type systems:`
 
