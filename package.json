@@ -11,7 +11,7 @@
         "lint": "oxlint --fix && eslint . --fix",
         "lint:check": "oxlint && eslint .",
         "types:check": "vue-tsc --noEmit",
-        "generate:types": "curl -skL \"${APP_URL:-http://laravel-template-13.test}/docs/api.json\" -o /tmp/lt13-api-spec.json && openapi-typescript /tmp/lt13-api-spec.json -o resources/js/types/api.d.ts"
+        "generate:types": "curl -skL \"$(grep ^APP_URL= .env | cut -d '=' -f2- | sed 's#/*$##')/docs/api.json\" -o /tmp/api-spec.json && openapi-typescript /tmp/api-spec.json -o resources/js/types/api.d.ts && node scripts/generate-model-types.mjs /tmp/api-spec.json"
     },
     "devDependencies": {
         "@eslint/js": "^9.19.0",

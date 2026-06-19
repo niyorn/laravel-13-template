@@ -68,17 +68,32 @@ This curls `/docs/api.json` and runs `openapi-typescript` → `resources/js/type
 build does NOT do this — run it manually after API changes, or wire it into your dev flow.)
 
 `4. Consume the types on the frontend.` openapi-typescript emits a `paths` map and reusable
-`components['schemas']`. Alias what you need:
+`components['schemas']`. On top of that, `generate:types` runs `scripts/generate-model-types.mjs` to
+write `resources/js/types/models.ts` — a `flat alias` per schema (`export type Post = ...`). Prefer the
+flat alias for a Resource shape; only index into `paths[...]` for an exact endpoint body:
 
 ```ts
-import type { components, paths } from '@/types/api';
+import type { Post } from '@/types/models'; // flat alias — preferred
 
-type Post = components['schemas']['PostResource'];
-
-// response body of GET /api/posts:
+// response body of GET /api/posts (only when you need the exact endpoint body):
+import type { paths } from '@/types/api';
 type PostsResponse =
     paths['/api/posts']['get']['responses']['200']['content']['application/json'];
 ```
+
+`The flat alias name = the schema name Scramble emits.` A Resource named `PostResource` defaults to
+the key `PostResource` (→ `import type { PostResource }`). Use Scramble's `#[SchemaName('Post')]`
+attribute on the Resource class to get a clean `Post` alias — that attribute is the single knob that
+controls the generated frontend type name:
+
+```php
+use Dedoc\Scramble\Attributes\SchemaName;
+
+#[SchemaName('Post')] // → export type Post = ... in models.ts
+class PostResource extends JsonResource { /* ... */ }
+```
+
+`models.ts is generated and committed` alongside `api.d.ts` — don't hand-edit it.
 
 ## Getting accurate inference (the one discipline this requires)
 
@@ -96,12 +111,12 @@ blanket DTO rewrite. Publish config to customise (api path/domain, servers) if r
 
 ## Regeneration caveat (APP_URL)
 
-`generate:types` hits a `running backend` — by default this project's Herd URL
-(`http://laravel-template-13.test`). To point at another environment, export `APP_URL` first:
+`generate:types` hits a `running backend`. The script reads `APP_URL` straight from this
+project's `.env`, so it follows the app's Herd URL automatically — no hardcoded host, and it
+keeps working when the template is copied into a differently-named project.
 
-```bash
-APP_URL=https://some-other.test npm run generate:types
-```
+To point at another environment, change `APP_URL` in `.env` before running the script (the
+script reads `.env`, so an exported shell variable alone will not override it).
 
 If `git status` shows an unexpectedly large diff in `resources/js/types/api.d.ts`, you probably
 generated against the wrong backend — discard and re-run with the correct `APP_URL`.
