@@ -365,6 +365,12 @@ The JSON API (`api.php`) is typed end-to-end: `api.php` controllers return Larav
 Scramble generates an OpenAPI spec at `/docs/api.json` → `openapi-typescript` writes it to
 `resources/js/types/api/index.d.ts`. See the `api-types-development` skill for the full workflow.
 
+`Responses are NOT wrapped in a `data` key.` `JsonResource::withoutWrapping()` is set globally in
+`AppServiceProvider`, so a Resource serializes to its bare object — `{ "id": 1, ... }`, not
+`{ "data": { "id": 1, ... } }`. Scramble reads this at boot, so the generated types are unwrapped to
+match. (Exception: paginated collections still return `data` + `meta` + `links` — that structure is
+inherent to pagination and unaffected by `withoutWrapping()`.)
+
 `GOLDEN RULE: every frontend call to the JSON API MUST be typed with the generated types in
 `resources/js/types/api/`(import via`@/types/api`).` Never type an API request or response with
 `any`, and never hand-write an interface to describe an API payload — derive it from `@/types/api` so a

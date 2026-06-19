@@ -129,6 +129,10 @@ generated against the wrong backend — discard and re-run with the correct `APP
   (run `php artisan install:api` to create it; that also installs Sanctum).
 - `Keep returning Resources from api.php` — not raw models or arrays. The Resource is the response
   contract Scramble reads and types.
+- `Responses are unwrapped` — `JsonResource::withoutWrapping()` is set globally in `AppServiceProvider`,
+  so Resources serialize without a top-level `data` key, and Scramble generates unwrapped types to match.
+  Don't re-introduce a manual `data` wrapper. (Paginated collections still return `data` + `meta` + `links`;
+  that's inherent to pagination and unaffected.)
 - `Don't hand-edit `resources/js/types/api/```(`index.d.ts`or`schemas.ts`) — both are overwritten by`generate:types`.
 - Re-run `generate:types` after any API change so the frontend types update and stale usages break.
 - `laravel-data is intentionally NOT used here` — Resources + Scramble is the chosen path. (Scramble
