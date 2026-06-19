@@ -226,6 +226,23 @@ Vue components must have a single root element.
   Keep project-specific notes below this line so they survive a boost regeneration.
 -->
 
+# Routing architecture — where routes live
+
+`Page views go in `web.php`; everything else goes in `api.php`.` This split is deliberate: the JSON API
+is meant to be exposed/consumed independently of the web UI.
+
+- `web.php` → Inertia page renders only (`Inertia::render(...)` returning a Vue page). Session + cookie
+  auth, CSRF. Typed on the frontend by Wayfinder (`@/wayfinder/...`).
+- `api.php` → everything else: data fetches and mutations (create/update/delete), and anything a page
+  does after its initial load. Stateless JSON, token auth (Sanctum), returns API Resources. Typed on the
+  frontend by `@/types/api` (Scramble → openapi-typescript).
+
+Rule of thumb: returns a rendered page → `web.php`; returns or accepts JSON → `api.php`.
+
+`Exception:` Fortify's session-auth routes (login, register, password, email verification, profile)
+are inherently web/session and stay on the web side. The "everything in `api.php`" rule is about your
+own domain endpoints, not the session-auth plumbing.
+
 # Wayfinder — running the `next`/beta branch
 
 This project intentionally tracks the Wayfinder beta (`laravel/wayfinder: dev-next` in `composer.json`),
@@ -341,3 +358,40 @@ route/controller/model changes outside a running dev server, run `php artisan wa
   the Vite plugin also regenerates on dev/build.
 - Model types reflect DB columns only — they do NOT honor `$hidden`/`$visible`/`$appends` or accessors.
   Don't trust generated model types as the serialized API shape.
+
+# JSON API types — always use the generated types
+
+The JSON API (`api.php`) is typed end-to-end: `api.php` controllers return Laravel API Resources →
+Scramble generates an OpenAPI spec at `/docs/api.json` → `openapi-typescript` writes it to
+`resources/js/types/api.d.ts`. See the `api-types-development` skill for the full workflow.
+
+`GOLDEN RULE: every frontend call to the JSON API MUST be typed with the generated types in
+`resources/js/types/api.d.ts`(import via`@/types/api`).` Never type an API request or response with
+`any`, and never hand-write an interface to describe an API payload — derive it from `@/types/api` so a
+backend change surfaces as a TypeScript error instead of a runtime surprise.
+
+```ts
+import type { components, paths } from '@/types/api';
+
+// Reusable schema (a Resource):
+type User = components['schemas']['User'];
+
+// Exact response body of an endpoint:
+type UserResponse =
+    paths['/user']['get']['responses']['200']['content']['application/json'];
+
+const { data } = await useHttp().get('/api/user'); // annotate `data` as UserResponse
+```
+
+`How the types stay current:`
+
+- Regenerate manually with `npm run generate:types` (needs the app served by Herd — it curls the live spec).
+- The `generate-api-types` pre-commit hook auto-regenerates and stages `api.d.ts` whenever a commit
+  touches `app/Http/Resources`, `app/Http/Controllers`, `app/Http/Requests`, `app/Enums`, or `routes/api.php`.
+- `Unlike `resources/js/wayfinder/`, `api.d.ts` IS committed` — the Vite build can't rebuild it (it needs a
+  running server), so the committed copy is the source of truth. Don't hand-edit it.
+
+`Don't confuse the two type systems:`
+
+- `Wayfinder` (`@/wayfinder/...`) → `web.php` Inertia routes: links, forms, page props.
+- `@/types/api` → `api.php` JSON request/response shapes. Use this for every API call.
