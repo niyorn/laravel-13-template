@@ -10,7 +10,8 @@
         "format:check": "oxfmt --check resources/",
         "lint": "oxlint --fix && eslint . --fix",
         "lint:check": "oxlint && eslint .",
-        "types:check": "vue-tsc --noEmit"
+        "types:check": "vue-tsc --noEmit",
+        "generate:types": "curl -skL \"${APP_URL:-http://laravel-template-13.test}/docs/api.json\" -o /tmp/lt13-api-spec.json && openapi-typescript /tmp/lt13-api-spec.json -o resources/js/types/api.d.ts"
     },
     "devDependencies": {
         "@eslint/js": "^9.19.0",
@@ -25,6 +26,7 @@
         "eslint-plugin-oxlint": "^1.70.0",
         "eslint-plugin-vue": "^9.32.0",
         "lefthook": "^2.1.9",
+        "openapi-typescript": "^7.13.0",
         "oxfmt": "^0.55.0",
         "oxlint": "^1.70.0",
         "typescript": "^5.2.2",
