@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Link } from '@inertiajs/vue3';
+
 import AppLogoIcon from '@/components/AppLogoIcon.vue';
 import {
     Card,
@@ -8,7 +9,7 @@ import {
     CardHeader,
     CardTitle,
 } from '@/components/ui/card';
-import { home } from '@/routes';
+import { home } from '@/wayfinder/routes';
 
 defineProps<{
     title?: string;

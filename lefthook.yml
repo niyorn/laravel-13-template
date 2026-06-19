@@ -1,0 +1,47 @@
+# Git hooks managed by lefthook. Installed automatically on `npm install`
+# (via the lefthook package's postinstall), or manually with `npx lefthook install`.
+pre-commit:
+  parallel: true
+  jobs:
+    # PHP: format staged files with Pint. Independent of the frontend chain,
+    # so it runs in parallel with it.
+    - name: pint
+      glob: '*.php'
+      run: vendor/bin/pint {staged_files}
+      stage_fixed: true
+
+    # Frontend: must run in order (piped) because all three tools rewrite the
+    # same files — oxlint --fix, then eslint --fix (Vue templates), then oxfmt.
+    - name: frontend
+      group:
+        piped: true
+        jobs:
+          - name: oxlint
+            glob: '*.{js,ts,vue,mjs,cjs}'
+            run: npx oxlint --fix {staged_files}
+            stage_fixed: true
+          - name: eslint
+            glob: '*.{js,ts,vue,mjs,cjs}'
+            run: npx eslint --fix {staged_files}
+            stage_fixed: true
+          - name: oxfmt
+            glob: '*.{js,ts,vue,mjs,cjs,json,jsonc,css,scss,yml,yaml,md}'
+            run: npx oxfmt {staged_files}
+            stage_fixed: true
+
+# Heavyweight, whole-project checks run before push (not on every commit):
+# both analyze across files, so per-file staged scoping would be misleading.
+# The glob only decides whether the job runs for this push; each command
+# still analyzes the full project.
+pre-push:
+  parallel: true
+  jobs:
+    - name: phpstan
+      glob: '*.php'
+      run: vendor/bin/phpstan analyse --no-progress
+    - name: vue-tsc
+      glob: '*.{ts,vue}'
+      run: npm run types:check
+    - name: tests
+      glob: '*.{php,ts,vue,js,mjs,cjs}'
+      run: php artisan test --compact

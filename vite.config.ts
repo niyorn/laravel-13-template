@@ -27,8 +27,8 @@ export default defineConfig({
                 },
             },
         }),
-        wayfinder({
-            formVariants: true,
-        }),
+        // Beta (dev-next): generators are configured in config/wayfinder.php, not via
+        // plugin args. Passing formVariants here would send the removed --with-form flag.
+        wayfinder(),
     ],
 });

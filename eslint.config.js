@@ -1,7 +1,9 @@
 import stylistic from '@stylistic/eslint-plugin';
-import { defineConfigWithVueTs, vueTsConfigs } from '@vue/eslint-config-typescript';
-import prettier from 'eslint-config-prettier/flat';
-import importPlugin from 'eslint-plugin-import';
+import {
+    defineConfigWithVueTs,
+    vueTsConfigs,
+} from '@vue/eslint-config-typescript';
+import oxlint from 'eslint-plugin-oxlint';
 import vue from 'eslint-plugin-vue';
 
 const controlStatements = [
@@ -14,50 +16,19 @@ const controlStatements = [
     'try',
     'throw',
 ];
-const paddingAroundControl = [
-    ...controlStatements.flatMap((stmt) => [
-        { blankLine: 'always', prev: '*', next: stmt },
-        { blankLine: 'always', prev: stmt, next: '*' },
-    ]),
-];
+const paddingAroundControl = controlStatements.flatMap((stmt) => [
+    { blankLine: 'always', prev: '*', next: stmt },
+    { blankLine: 'always', prev: stmt, next: '*' },
+]);
 
 export default defineConfigWithVueTs(
+    // ESLint owns Vue <template> rules: oxlint cannot lint template markup.
     vue.configs['flat/essential'],
     vueTsConfigs.recommended,
     {
-        plugins: {
-            import: importPlugin,
-        },
-        settings: {
-            'import/resolver': {
-                typescript: {
-                    alwaysTryTypes: true,
-                    project: './tsconfig.json',
-                },
-                node: true,
-            },
-        },
         rules: {
             'vue/multi-word-component-names': 'off',
             '@typescript-eslint/no-explicit-any': 'off',
-            '@typescript-eslint/consistent-type-imports': [
-                'error',
-                {
-                    prefer: 'type-imports',
-                    fixStyle: 'separate-type-imports',
-                },
-            ],
-            'import/order': [
-                'error',
-                {
-                    groups: ['builtin', 'external', 'internal', 'parent', 'sibling', 'index'],
-                    alphabetize: { order: 'asc', caseInsensitive: true },
-                },
-            ],
-            'import/consistent-type-specifier-style': [
-                'error',
-                'prefer-top-level',
-            ],
         },
     },
     {
@@ -65,7 +36,8 @@ export default defineConfigWithVueTs(
             '@stylistic': stylistic,
         },
         rules: {
-            '@stylistic/brace-style': ['error', '1tbs', { allowSingleLine: false }],
+            curly: ['error', 'all'],
+            // Not a pure-formatting rule, so oxfmt does not cover it; keep it here.
             '@stylistic/padding-line-between-statements': [
                 'error',
                 ...paddingAroundControl,
@@ -86,14 +58,6 @@ export default defineConfigWithVueTs(
             'resources/js/wayfinder/**',
         ],
     },
-    prettier,
-    {
-        plugins: {
-            '@stylistic': stylistic,
-        },
-        rules: {
-            curly: ['error', 'all'],
-            '@stylistic/brace-style': ['error', '1tbs', { allowSingleLine: false }],
-        },
-    },
+    // Must stay last: turns off every ESLint rule that oxlint already handles.
+    ...oxlint.configs['flat/recommended'],
 );
