@@ -1,33 +1,48 @@
 # Git hooks managed by lefthook. Installed automatically on `npm install`
 # (via the lefthook package's postinstall), or manually with `npx lefthook install`.
 pre-commit:
-  parallel: true
+  # Top-level jobs run sequentially (in order): the format/lint group stages its
+  # fixes first, THEN generate-api-types runs its own `git add` — this ordering
+  # prevents an .git/index.lock race between the two staging steps.
   jobs:
-    # PHP: format staged files with Pint. Independent of the frontend chain,
-    # so it runs in parallel with it.
-    - name: pint
-      glob: '*.php'
-      run: vendor/bin/pint {staged_files}
-      stage_fixed: true
-
-    # Frontend: must run in order (piped) because all three tools rewrite the
-    # same files — oxlint --fix, then eslint --fix (Vue templates), then oxfmt.
-    - name: frontend
+    - name: format-lint
       group:
-        piped: true
+        parallel: true
         jobs:
-          - name: oxlint
-            glob: '*.{js,ts,vue,mjs,cjs}'
-            run: npx oxlint --fix {staged_files}
+          # PHP: format staged files with Pint. Independent of the frontend chain,
+          # so it runs in parallel with it.
+          - name: pint
+            glob: '*.php'
+            run: vendor/bin/pint {staged_files}
             stage_fixed: true
-          - name: eslint
-            glob: '*.{js,ts,vue,mjs,cjs}'
-            run: npx eslint --fix {staged_files}
-            stage_fixed: true
-          - name: oxfmt
-            glob: '*.{js,ts,vue,mjs,cjs,json,jsonc,css,scss,yml,yaml,md}'
-            run: npx oxfmt {staged_files}
-            stage_fixed: true
+
+          # Frontend: must run in order (piped) because all three tools rewrite the
+          # same files — oxlint --fix, then eslint --fix (Vue templates), then oxfmt.
+          - name: frontend
+            group:
+              piped: true
+              jobs:
+                - name: oxlint
+                  glob: '*.{js,ts,vue,mjs,cjs}'
+                  run: npx oxlint --fix {staged_files}
+                  stage_fixed: true
+                - name: eslint
+                  glob: '*.{js,ts,vue,mjs,cjs}'
+                  run: npx eslint --fix {staged_files}
+                  stage_fixed: true
+                - name: oxfmt
+                  glob: '*.{js,ts,vue,mjs,cjs,json,jsonc,css,scss,yml,yaml,md}'
+                  run: npx oxfmt {staged_files}
+                  stage_fixed: true
+
+    # When a commit touches API-relevant backend code, regenerate the OpenAPI -> TS
+    # types and include the result in THIS commit (explicit `git add`, because
+    # stage_fixed only re-stages already-staged files). No-op when the spec is
+    # unchanged: openapi-typescript emits byte-identical output, so `git add` stages
+    # nothing. Requires the app to be served (Herd) so Scramble can build the spec.
+    - name: generate-api-types
+      glob: '{app/Http/Resources/**/*.php,app/Http/Controllers/**/*.php,app/Http/Requests/**/*.php,app/Enums/**/*.php,routes/api.php}'
+      run: npm run generate:types && git add resources/js/types/api.d.ts
 
 # Heavyweight, whole-project checks run before push (not on every commit):
 # both analyze across files, so per-file staged scoping would be misleading.
