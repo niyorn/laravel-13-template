@@ -395,3 +395,57 @@ const { data } = await useHttp().get('/api/user'); // annotate `data` as UserRes
 
 - `Wayfinder` (`@/wayfinder/...`) → `web.php` Inertia routes: links, forms, page props.
 - `@/types/api` → `api.php` JSON request/response shapes. Use this for every API call.
+
+# UI components — reuse Reka UI before building your own
+
+`This project builds its UI on Reka UI` (`reka-ui`) — an unstyled, accessible Vue 3 primitive
+library. The styled, ready-to-use wrappers live in `resources/js/components/ui/` (shadcn-vue style:
+each primitive in its own folder — `button/`, `dialog/`, `select/`, `tooltip/`, `sidebar/`, etc.).
+
+`Golden rule: reach for an existing component before writing a new one.` In order of preference:
+
+1. `Use a wrapper in `resources/js/components/ui/`` if one already exists (`Button`, `Dialog`,
+`Select`, `Checkbox`, `Sheet`, `DropdownMenu`, …). These are the project's design-system pieces —
+   prefer them for anything user-facing.
+2. `Compose from a Reka UI primitive` if no styled wrapper exists yet but Reka UI ships the behavior
+   (accordion, popover, slider, tabs, combobox, etc.). Reka UI handles accessibility, keyboard
+   navigation, and focus management for you — don't reinvent it. Check the Reka UI docs for what's
+   available before assuming you need something custom.
+3. `Only write a fully custom component when necessary` — i.e. when neither an existing wrapper nor a
+   Reka UI primitive covers the need. When you do, follow the structure of the existing
+   `components/ui/` folders (per-component folder, typed props, Tailwind classes via the project's
+   `cn()` / `tailwind-merge` helper) so it stays consistent with the design system.
+
+Never hand-roll a custom dropdown, modal, tooltip, or other interactive widget when Reka UI already
+provides an accessible primitive for it.
+
+# Responsive design — Mobile First, Container Queries by default
+
+`Always design mobile first.` Write the base (unprefixed) Tailwind styles for the smallest screen,
+then layer larger layouts on top with responsive variants. Never start from desktop and try to
+shrink down.
+
+```vue
+<!-- base = mobile; @lg: = wider container -->
+<div class="flex flex-col gap-4 @lg:flex-row @lg:gap-8">…</div>
+```
+
+`Prefer Container Queries over Media Queries.` Components should respond to the size of their own
+container, not the viewport — this keeps a component correct wherever it's placed (sidebar, modal,
+full-width page). Tailwind v4 has container queries built in (no plugin needed):
+
+- Mark the container with `@container` on the parent.
+- Size children with the `@`-prefixed variants: `@sm:`, `@md:`, `@lg:`, `@xl:` (and named containers
+  via `@container/{name}` → `@lg/{name}:`).
+
+```vue
+<div class="@container">
+    <article class="grid grid-cols-1 gap-4 @md:grid-cols-2 @xl:grid-cols-3">…</article>
+</div>
+```
+
+`Use viewport Media Queries (`sm:`/`md:`/`lg:`/`xl:`) only as a last resort` — reserve them for things
+that genuinely depend on the viewport rather than the component's own box (e.g. a top-level page
+shell, the app sidebar collapse breakpoint, or device-level layout switches). If you find yourself
+reaching for a media-query variant inside a reusable component, stop and use a container query
+instead.
