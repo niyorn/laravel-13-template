@@ -275,7 +275,8 @@ which breaks`npm run dev`/`npm run build`. Form variants are on by default via `
 `Golden rule: never hardcode a URL or path in frontend code.` Always import a generated
 function from `@/wayfinder/...`. If you're typing a string that starts with `/`, you're doing it wrong.
 
-`1. Links / navigation` — import the named route and call it inside `:href`:
+`1. Links / navigation` — import the named route and call it inside `:href`,
+and `always add the bare `prefetch` prop` so the next page loads instantly:
 
 ```vue
 <script setup lang="ts">
@@ -285,10 +286,29 @@ import { edit } from '@/wayfinder/routes/profile';
 </script>
 
 <template>
-    <Link :href="dashboard()">Dashboard</Link>
-    <Link :href="edit()">Edit profile</Link>
+    <Link :href="dashboard()" prefetch>Dashboard</Link>
+    <Link :href="edit()" prefetch>Edit profile</Link>
 </template>
 ```
+
+`Why `prefetch` (prefetch on hover) is the default for every page link:` the bare
+`prefetch` prop tells Inertia to fetch the target page in the background once the user
+hovers the link for 75ms — so by the time they click, the response is already cached and
+navigation feels instant. The result is cached for 30s by default. This is cheap insurance
+for normal page links and should be on `every` `<Link>` that points at an Inertia page.
+
+`Tuning (only when you have a specific reason):`
+
+- `cache-for="1m"` / `:cache-for="5000"` — override the 30s cache window (string duration or ms).
+- `:cache-for="['30s', '1m']"` — stale-while-revalidate: serve the cached copy instantly during
+  the stale window while refreshing in the background.
+- `prefetch="mount"` — prefetch as soon as the link renders (for a link you're confident gets clicked).
+- `prefetch="click"` — prefetch on mousedown instead of hover (lighter, but less head start).
+- `:prefetch="['mount', 'hover']"` — combine strategies.
+
+`When NOT to prefetch:` skip the prop on links to `heavy` pages (large queries / lots of data) where
+prefetching on every hover would add real server load — there, prefer `prefetch="click"` or no prefetch.
+Prefetch is for GET page navigations only; never put it on a destructive action.
 
 `2. Forms` — this project submits forms with Inertia's `<Form>` bound to a controller action's
 `.form()`. Do NOT reach for `useForm` or `router.post` for normal forms; follow the existing pattern:
@@ -443,6 +463,12 @@ each primitive in its own folder — `button/`, `dialog/`, `select/`, `tooltip/`
 
 Never hand-roll a custom dropdown, modal, tooltip, or other interactive widget when Reka UI already
 provides an accessible primitive for it.
+
+# Client-side state — use VueUse storage
+
+For anything stored in `localStorage` or `sessionStorage`, use a VueUse storage composable
+(`useStorage` / `useLocalStorage` / `useSessionStorage`) instead of calling the browser APIs by hand —
+see the `vueuse-functions` skill, and `resources/js/composables/useAppearance.ts` for an example.
 
 # Responsive design — Mobile First, Container Queries by default
 

@@ -1,5 +1,6 @@
+import { useStorage } from '@vueuse/core';
 import type { ComputedRef, Ref } from 'vue';
-import { computed, onMounted, ref } from 'vue';
+import { computed } from 'vue';
 
 import type { Appearance, ResolvedAppearance } from '@/types';
 
@@ -10,6 +11,10 @@ export type UseAppearanceReturn = {
     resolvedAppearance: ComputedRef<ResolvedAppearance>;
     updateAppearance: (value: Appearance) => void;
 };
+
+// Reactive ref backed by localStorage: reads the stored value on init and
+// writes back automatically on every change (replaces manual getItem/setItem).
+const appearance = useStorage<Appearance>('appearance', 'system');
 
 export function updateTheme(value: Appearance): void {
     if (typeof window === 'undefined') {
@@ -49,14 +54,6 @@ const mediaQuery = () => {
     return window.matchMedia('(prefers-color-scheme: dark)');
 };
 
-const getStoredAppearance = () => {
-    if (typeof window === 'undefined') {
-        return null;
-    }
-
-    return localStorage.getItem('appearance') as Appearance | null;
-};
-
 const prefersDark = (): boolean => {
     if (typeof window === 'undefined') {
         return false;
@@ -66,9 +63,7 @@ const prefersDark = (): boolean => {
 };
 
 const handleSystemThemeChange = () => {
-    const currentAppearance = getStoredAppearance();
-
-    updateTheme(currentAppearance || 'system');
+    updateTheme(appearance.value || 'system');
 };
 
 export function initializeTheme(): void {
@@ -76,42 +71,29 @@ export function initializeTheme(): void {
         return;
     }
 
-    // Initialize theme from saved preference or default to system...
-    const savedAppearance = getStoredAppearance();
-    updateTheme(savedAppearance || 'system');
+    // Apply the stored preference (or system) immediately on boot...
+    updateTheme(appearance.value || 'system');
 
     // Set up system theme change listener...
     mediaQuery()?.addEventListener('change', handleSystemThemeChange);
 }
 
-const appearance = ref<Appearance>('system');
-
 export function useAppearance(): UseAppearanceReturn {
-    onMounted(() => {
-        const savedAppearance = localStorage.getItem(
-            'appearance',
-        ) as Appearance | null;
-
-        if (savedAppearance) {
-            appearance.value = savedAppearance;
-        }
-    });
-
     const resolvedAppearance = computed<ResolvedAppearance>(() => {
-        if (appearance.value === 'system') {
+        const current = appearance.value ?? 'system';
+
+        if (current === 'system') {
             return prefersDark() ? 'dark' : 'light';
         }
 
-        return appearance.value;
+        return current;
     });
 
     function updateAppearance(value: Appearance) {
+        // useStorage persists this to localStorage automatically...
         appearance.value = value;
 
-        // Store in localStorage for client-side persistence...
-        localStorage.setItem('appearance', value);
-
-        // Store in cookie for SSR...
+        // Store in cookie too, so the server can render the right theme (SSR)...
         setCookie('appearance', value);
 
         updateTheme(value);
