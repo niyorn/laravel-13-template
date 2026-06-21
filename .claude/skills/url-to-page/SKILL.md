@@ -32,7 +32,7 @@ Run from anywhere inside the repo (needs `php artisan` to work — Herd serves t
 this only shells out to artisan, not the live site):
 
 ```bash
-node .claude/skills/url-to-page/resolve_page.mjs "<url-or-path>" [--depth N] [--ui] [--layout] [--all]
+node .claude/skills/url-to-page/resolve_page.mjs "<url-or-path>" [--depth N] [--ui] [--layout] [--all] [--fresh]
 ```
 
 By default the output is `lean`: the route, page file, one-line layout summary, and the page's
@@ -44,6 +44,13 @@ By default the output is `lean`: the route, page file, one-line layout summary, 
 | `--ui`      | Also include shadcn/Reka `ui/*` wrappers (`Button`, `Dialog*`, etc.).             |
 | `--layout`  | Also walk the layout children tree (the one-line `Layout:` summary always shows). |
 | `--all`     | Shorthand for `--ui --layout` — the full tree, e.g. for "all components of X".    |
+| `--fresh`   | Bypass the route cache and re-run `php artisan route:list` (see below).           |
+
+`Route caching:` the `php artisan route:list --json` output (the ~160ms framework-boot cost) is
+cached to a temp file keyed by repo path, making repeat runs ~5x faster (~210ms → ~40ms). The cache
+auto-invalidates when any `routes/**/*.php` file or `composer.lock` is newer than it, so editing a
+route busts it instantly. Use `--fresh` to force a rebuild in the rare case a route is registered
+elsewhere (e.g. dynamically inside a service provider) and the cache hasn't noticed.
 
 Examples:
 

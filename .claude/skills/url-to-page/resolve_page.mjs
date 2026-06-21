@@ -7,7 +7,9 @@
  */
 
 import { execFileSync } from 'node:child_process';
+import crypto from 'node:crypto';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import process from 'node:process';
 
@@ -75,7 +77,54 @@ function read(repoRoot, rel) {
 // Routes
 // ---------------------------------------------------------------------------
 
-function loadRoutes(repoRoot) {
+// Cache the `route:list --json` output in a temp file keyed by repo path. The PHP boot
+// (~160ms) dominates everything, so a cache hit (~4ms) is ~40x faster.
+function cachePathFor(repoRoot) {
+    const hash = crypto
+        .createHash('sha1')
+        .update(repoRoot)
+        .digest('hex')
+        .slice(0, 12);
+
+    return path.join(os.tmpdir(), `url-to-page-routes.${hash}.json`);
+}
+
+// Invalidation signal: newest mtime among route definitions + composer.lock. Editing a route
+// file (or `composer install` changing package routes like Fortify) busts the cache instantly.
+function routesNewestMtime(repoRoot) {
+    let newest = 0;
+    const mtime = (p) => {
+        try {
+            return fs.statSync(p).mtimeMs;
+        } catch {
+            return 0;
+        }
+    };
+    const walk = (dir) => {
+        let entries;
+
+        try {
+            entries = fs.readdirSync(dir, { withFileTypes: true });
+        } catch {
+            return;
+        }
+
+        for (const e of entries) {
+            const p = path.join(dir, e.name);
+
+            if (e.isDirectory()) {
+                walk(p);
+            } else if (e.name.endsWith('.php')) {
+                newest = Math.max(newest, mtime(p));
+            }
+        }
+    };
+    walk(path.join(repoRoot, 'routes'));
+
+    return Math.max(newest, mtime(path.join(repoRoot, 'composer.lock')));
+}
+
+function runArtisanRouteList(repoRoot) {
     let stdout;
 
     try {
@@ -97,6 +146,32 @@ function loadRoutes(repoRoot) {
             'ERROR: `php artisan route:list --json` produced no output.',
         );
         process.exit(1);
+    }
+
+    return stdout;
+}
+
+function loadRoutes(repoRoot, fresh) {
+    const cacheFile = cachePathFor(repoRoot);
+
+    if (!fresh && isFile(cacheFile)) {
+        const cacheMtime = fs.statSync(cacheFile).mtimeMs;
+
+        if (cacheMtime >= routesNewestMtime(repoRoot)) {
+            try {
+                return JSON.parse(fs.readFileSync(cacheFile, 'utf8'));
+            } catch {
+                // Corrupt cache — fall through and regenerate.
+            }
+        }
+    }
+
+    const stdout = runArtisanRouteList(repoRoot);
+
+    try {
+        fs.writeFileSync(cacheFile, stdout);
+    } catch {
+        // Best-effort cache write; ignore failures (e.g. read-only tmp).
     }
 
     return JSON.parse(stdout);
@@ -498,7 +573,7 @@ function urlToPath(u) {
 function main(argv) {
     if (!argv.length) {
         console.error(
-            'usage: resolve_page.mjs <url-or-path> [--depth N] [--ui] [--layout] [--all]',
+            'usage: resolve_page.mjs <url-or-path> [--depth N] [--ui] [--layout] [--all] [--fresh]',
         );
 
         return 2;
@@ -514,6 +589,7 @@ function main(argv) {
 
     const includeUi = argv.includes('--ui') || argv.includes('--all');
     const includeLayout = argv.includes('--layout') || argv.includes('--all');
+    const fresh = argv.includes('--fresh');
 
     const repoRoot = findRepoRoot(process.cwd());
 
@@ -527,7 +603,7 @@ function main(argv) {
 
     const urlPath = urlToPath(url);
 
-    const routes = loadRoutes(repoRoot);
+    const routes = loadRoutes(repoRoot, fresh);
     const route = matchRoute(routes, urlPath);
 
     console.log(`URL path : ${urlPath}`);
