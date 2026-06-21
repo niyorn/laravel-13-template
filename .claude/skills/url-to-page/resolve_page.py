@@ -248,15 +248,13 @@ def resolve_layout(repo_root, component):
 # Child .vue tree
 # ---------------------------------------------------------------------------
 
-VUE_IMPORT_RE = re.compile(r"""from\s+['"]([^'"]+)['"]""")
+# `import <clause> from '<spec>'` — clause captures default + named bindings, spec the path.
+# DOTALL so multi-line `import { A, B } from '...'` blocks are matched too.
+IMPORT_RE = re.compile(r"""import\s+(.+?)\s+from\s+['"]([^'"]+)['"]""", re.DOTALL)
 
 
 def resolve_import(spec, importing_file, repo_root):
-    """Resolve an import specifier to an absolute path. Handles '@/' and relative imports.
-
-    Reka UI wrappers are imported as folders ('@/components/ui/button') -> index.ts barrel,
-    which is not a .vue file, so those are skipped by the .vue filter in child_vue().
-    """
+    """Resolve an import specifier to an absolute path. Handles '@/' and relative imports."""
     if spec.startswith("@/"):
         return os.path.join(repo_root, "resources/js", spec[2:])
     if spec.startswith("."):
@@ -264,32 +262,86 @@ def resolve_import(spec, importing_file, repo_root):
     return None
 
 
-def child_vue(f, repo_root):
-    if not os.path.isfile(f):
+def imported_names(clause):
+    """Pull the bound names out of an import clause: '{ Button, Foo as Bar }' -> ['Button', 'Foo'].
+
+    Falls back to a bare default import ('Button') as a single name. For 'X as Y' the *exported*
+    name (X) is what the barrel re-exports, so that's what we keep.
+    """
+    brace = re.search(r"\{([^}]*)\}", clause)
+    if brace:
+        names = []
+        for part in brace.group(1).split(","):
+            part = part.strip()
+            if part:
+                names.append(part.split(" as ")[0].strip())
+        return names
+    bare = clause.strip()
+    return [bare] if re.fullmatch(r"\w+", bare) else []
+
+
+def resolve_barrel(dir_abs, names):
+    """Map imported names to .vue files via a folder's index.ts/js barrel (shadcn/Reka wrappers).
+
+    Reads `export { default as Button } from './Button.vue'` style lines and returns the .vue
+    paths for the names actually imported. Non-.vue re-exports (variants, helpers) are ignored.
+    """
+    index = next(
+        (os.path.join(dir_abs, c) for c in ("index.ts", "index.js")
+         if os.path.isfile(os.path.join(dir_abs, c))),
+        None,
+    )
+    if not index:
         return []
-    out = []
-    for ln in open(f, encoding="utf-8"):
-        m = VUE_IMPORT_RE.search(ln)
-        if not m:
-            continue
-        spec = m.group(1)
+    txt = open(index, encoding="utf-8").read()
+    exports = {}
+    for inner, spec in re.findall(
+            r"""export\s+\{([^}]*)\}\s+from\s+['"]([^'"]+)['"]""", txt):
         if not spec.endswith(".vue"):
             continue
-        r = resolve_import(spec, f, repo_root)
-        if r:
-            out.append(r)
+        for part in inner.split(","):
+            part = part.strip()
+            if not part:
+                continue
+            name = part.split(" as ")[1].strip() if " as " in part else part
+            exports[name] = os.path.normpath(os.path.join(dir_abs, spec))
+    return [exports[n] for n in names if n in exports]
+
+
+def child_vue(f, repo_root, include_ui=True):
+    """Resolve a file's child components: direct `.vue` imports plus folder/barrel imports.
+
+    When `include_ui` is False, shadcn/Reka wrappers under `components/ui/` are dropped.
+    """
+    if not os.path.isfile(f):
+        return []
+    txt = open(f, encoding="utf-8").read()
+    out = []
+    for clause, spec in IMPORT_RE.findall(txt):
+        if spec.endswith(".vue"):
+            r = resolve_import(spec, f, repo_root)
+            if r:
+                out.append(r)
+            continue
+        # Folder import (e.g. '@/components/ui/button') -> resolve names via its barrel.
+        if spec.startswith("@/") or spec.startswith("."):
+            target = resolve_import(spec, f, repo_root)
+            if target and os.path.isdir(target):
+                out.extend(resolve_barrel(target, imported_names(clause)))
+    if not include_ui:
+        out = [c for c in out if "/components/ui/" not in c.replace(os.sep, "/")]
     return out
 
 
-def print_tree(f, repo_root, depth, maxd, seen):
+def print_tree(f, repo_root, depth, maxd, seen, include_ui=True):
     root = os.path.join(repo_root, "resources/js")
-    for c in child_vue(f, repo_root):
+    for c in child_vue(f, repo_root, include_ui):
         tag = "" if os.path.isfile(c) else "  [MISSING]"
         rel = os.path.relpath(c, root)
         print(f"{'  ' * depth}- {rel}{tag}")
         if depth < maxd and c not in seen:
             seen.add(c)
-            print_tree(c, repo_root, depth + 1, maxd, seen)
+            print_tree(c, repo_root, depth + 1, maxd, seen, include_ui)
 
 
 # ---------------------------------------------------------------------------
@@ -299,12 +351,16 @@ def print_tree(f, repo_root, depth, maxd, seen):
 
 def main(argv):
     if not argv:
-        print("usage: resolve_page.py <url-or-path> [--depth N]", file=sys.stderr)
+        print("usage: resolve_page.py <url-or-path> [--depth N] [--ui] [--layout] [--all]",
+              file=sys.stderr)
         return 2
     url = argv[0]
-    depth = 3
+    depth = 4
     if "--depth" in argv:
         depth = int(argv[argv.index("--depth") + 1])
+    # Lean by default: only the page's own components. Opt in to extras.
+    include_ui = "--ui" in argv or "--all" in argv
+    include_layout = "--layout" in argv or "--all" in argv
 
     repo_root = find_repo_root(os.getcwd())
     if not repo_root:
@@ -346,7 +402,15 @@ def main(argv):
 
     if os.path.isfile(page_abs):
         print(f"Children (depth {depth}):")
-        print_tree(page_abs, repo_root, 1, depth, {page_abs})
+        print_tree(page_abs, repo_root, 1, depth, {page_abs}, include_ui)
+
+    # Layouts are applied centrally, not imported by the page, so walk their trees separately.
+    if include_layout:
+        for ident, path in layout:
+            lay_abs = os.path.join(repo_root, path)
+            if os.path.isfile(lay_abs):
+                print(f"Layout children — {ident} (depth {depth}):")
+                print_tree(lay_abs, repo_root, 1, depth, {lay_abs}, include_ui)
     return 0
 
 
