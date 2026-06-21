@@ -464,11 +464,77 @@ each primitive in its own folder — `button/`, `dialog/`, `select/`, `tooltip/`
 Never hand-roll a custom dropdown, modal, tooltip, or other interactive widget when Reka UI already
 provides an accessible primitive for it.
 
-# Client-side state — use VueUse storage
+# Toast feedback — always tell the user what happened
 
-For anything stored in `localStorage` or `sessionStorage`, use a VueUse storage composable
-(`useStorage` / `useLocalStorage` / `useSessionStorage`) instead of calling the browser APIs by hand —
-see the `vueuse-functions` skill, and `resources/js/composables/useAppearance.ts` for an example.
+`Use a toast to acknowledge every user action and every API call.` This project uses
+`vue-sonner`; import `toast` from it and call the typed method (`toast.success`, `toast.error`,
+`toast.info`, `toast.warning`). The styled `<Toaster>` is already mounted by the layouts and defaults
+to `top-right` (`resources/js/components/ui/sonner/Sonner.vue`). Server-side flashes are turned into
+toasts automatically by `initializeFlashToast` (`resources/js/lib/flashToast.ts`) — that path needs no
+manual call.
+
+```ts
+import { toast } from 'vue-sonner';
+```
+
+`Rules for JSON API calls (`useHttp`, see `@/types/api`):`
+
+- `On any error → `toast.error(...)`.` Wrap the call in `try/catch` (or the request's error path) and
+  show a short, human-readable message. Never let an API failure pass silently.
+- `On a successful create / update / delete → `toast.success(...)`.` These are the mutations the user
+  expects confirmation for ("Saved", "Deleted", "Updated").
+- `Reads (GET) get NO success toast` — a successful fetch is the expected default; only toast its
+  error. Toasting every read would be noise.
+
+```ts
+try {
+    await useHttp().post<Post>('/api/posts', form);
+    toast.success('Post created');
+} catch {
+    toast.error('Could not create the post. Please try again.');
+}
+```
+
+`Inertia `<Form>` / form submissions — toast client-side` from the form's `@success` / `@error`
+events, the same as a JSON API call. Keep the feedback in the component that owns the form so the
+message lives next to the action that triggered it.
+
+```vue
+<Form
+    v-bind="PostController.store.form()"
+    @success="toast.success('Post created')"
+    @error="toast.error('Could not save. Check the highlighted fields.')"
+>
+```
+
+`Server flash → `initializeFlashToast` is for out-of-band messages only` — outcomes the user didn't
+just trigger from a form/API call on the current page (e.g. a redirect landing with a "Session
+expired" notice). Don't flash a toast from the controller for a normal create/update/delete the client
+already toasts, or you'll double-toast the same outcome.
+
+# VueUse — reach for it before reinventing browser/reactive logic
+
+`Use VueUse extensively.` It's already a dependency and ships hundreds of well-tested, SSR-safe,
+auto-cleaning composables for things we'd otherwise hand-roll — and hand-rolled versions almost always
+leak listeners, miss edge cases, or forget cleanup. `Before writing any composable that touches the DOM,
+browser APIs, timers, events, or reactive utilities, check whether VueUse already provides it` (read the
+`vueuse-functions` skill, or browse https://vueuse.org). Only write your own when nothing fits.
+
+Common cases — prefer the VueUse composable over the manual equivalent:
+
+| Need                              | Use                                                           | Don't hand-roll                               |
+| --------------------------------- | ------------------------------------------------------------- | --------------------------------------------- |
+| `localStorage` / `sessionStorage` | `useStorage` / `useLocalStorage` / `useSessionStorage`        | `localStorage.getItem` + manual reactivity    |
+| Element size / visibility         | `useElementSize`, `useElementVisibility`, `useResizeObserver` | raw `ResizeObserver` / `IntersectionObserver` |
+| Events & keys                     | `useEventListener`, `onClickOutside`, `useMagicKeys`          | `addEventListener` without teardown           |
+| Timers                            | `useIntervalFn`, `useTimeoutFn`, `useTimeoutPoll`             | bare `setInterval` / `setTimeout`             |
+| Media / breakpoints               | `useMediaQuery`, `useBreakpoints`                             | hand-written `matchMedia`                     |
+| Async / fetch                     | `useAsyncState`, `watchDebounced`, `refDebounced`             | manual debounce/throttle + loading flags      |
+| Clipboard, scroll, mouse, etc.    | `useClipboard`, `useScroll`, `useMouse`, …                    | raw browser API + cleanup                     |
+
+`Why:` VueUse handles SSR, reactivity, and automatic cleanup (listeners removed on unmount) for you, so
+the code is shorter and doesn't leak. `resources/js/composables/useAppearance.ts` is an in-repo example
+built on a VueUse storage composable.
 
 # Responsive design — Mobile First, Container Queries by default
 
