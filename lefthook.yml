@@ -1,5 +1,5 @@
 # Git hooks managed by lefthook. Installed automatically on `npm install`
-# (via the lefthook package's postinstall), or manually with `npx lefthook install`.
+# via the `prepare` script in package.json, or manually with `npx lefthook install`.
 pre-commit:
   # Top-level jobs run sequentially (in order): the format/lint group stages its
   # fixes first, THEN generate-api-types runs its own `git add` — this ordering
