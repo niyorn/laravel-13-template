@@ -18,21 +18,26 @@ pre-commit:
 
           # Frontend: must run in order (piped) because all three tools rewrite the
           # same files — oxlint --fix, then eslint --fix (Vue templates), then oxfmt.
+          # The tools' own ignore configs exclude some staged files (e.g. the vendored
+          # resources/js/components/ui/** shadcn components). When every staged file is
+          # ignored, oxlint/oxfmt would exit non-zero on "no files"; the flags below
+          # make them treat that as a no-op so the commit isn't blocked. eslint just
+          # warns in that case, which --no-warn-ignored silences.
           - name: frontend
             group:
               piped: true
               jobs:
                 - name: oxlint
                   glob: '*.{js,ts,vue,mjs,cjs}'
-                  run: npx oxlint --fix {staged_files}
+                  run: npx oxlint --fix --no-error-on-unmatched-pattern {staged_files}
                   stage_fixed: true
                 - name: eslint
                   glob: '*.{js,ts,vue,mjs,cjs}'
-                  run: npx eslint --fix {staged_files}
+                  run: npx eslint --fix --no-warn-ignored {staged_files}
                   stage_fixed: true
                 - name: oxfmt
                   glob: '*.{js,ts,vue,mjs,cjs,json,jsonc,css,scss,yml,yaml,md}'
-                  run: npx oxfmt {staged_files}
+                  run: npx oxfmt --no-error-on-unmatched-pattern {staged_files}
                   stage_fixed: true
 
     # When a commit touches API-relevant backend code, regenerate the OpenAPI -> TS
