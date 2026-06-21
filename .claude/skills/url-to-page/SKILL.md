@@ -8,7 +8,7 @@ description: Use when given a page URL for this app (e.g. a bug report "somethin
 ## Overview
 
 Maps a page URL from this app to the Inertia page component on disk, plus its
-auto-applied layout chain and its `.vue` child tree. Runs `resolve_page.py`, which is
+auto-applied layout chain and its `.vue` child tree. Runs `resolve_page.mjs` (Node, no deps), which is
 deterministic: it reads the live route table (`php artisan route:list --json`), resolves
 the Inertia component name from the route's action, reads the layout rules from
 `resources/js/app.ts`, and walks `@/`-aliased imports. No guessing.
@@ -32,7 +32,7 @@ Run from anywhere inside the repo (needs `php artisan` to work — Herd serves t
 this only shells out to artisan, not the live site):
 
 ```bash
-python3 .claude/skills/url-to-page/resolve_page.py "<url-or-path>" [--depth N] [--ui] [--layout] [--all]
+node .claude/skills/url-to-page/resolve_page.mjs "<url-or-path>" [--depth N] [--ui] [--layout] [--all]
 ```
 
 By default the output is `lean`: the route, page file, one-line layout summary, and the page's
@@ -49,13 +49,13 @@ Examples:
 
 ```bash
 # Lean default — just this page's own components
-python3 .claude/skills/url-to-page/resolve_page.py "http://<this-app>.test/settings/profile"
+node .claude/skills/url-to-page/resolve_page.mjs "http://<this-app>.test/settings/profile"
 
 # 1 level of children
-python3 .claude/skills/url-to-page/resolve_page.py "/dashboard" --depth 1
+node .claude/skills/url-to-page/resolve_page.mjs "/dashboard" --depth 1
 
 # Everything — page + ui/* wrappers + layout subtree
-python3 .claude/skills/url-to-page/resolve_page.py "/login" --all
+node .claude/skills/url-to-page/resolve_page.mjs "/login" --all
 ```
 
 ## Output
