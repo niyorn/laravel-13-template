@@ -6,8 +6,8 @@ TypeScript types, Pest tests, and Tailwind v4.
 
 ## Requirements
 
-- PHP 8.3+
-- Node 22+
+- PHP 8.4+
+- Node 24+
 - [Laravel Herd](https://herd.laravel.com/) (serves the app at `https://laravel-template-13.test`)
 - PostgreSQL — run via [DBngin](https://dbngin.com/) (free) or Herd Pro's DB Engine (see below)
 
