@@ -46,7 +46,9 @@ pre-commit:
     # unchanged: openapi-typescript emits byte-identical output, so `git add` stages
     # nothing. Requires the app to be served (Herd) so Scramble can build the spec.
     - name: generate-api-types
-      glob: '{app/Http/Resources/**/*.php,app/Http/Controllers/**/*.php,app/Http/Requests/**/*.php,app/Enums/**/*.php,routes/api.php}'
+      # `**.php` and not `**/*.php`: the latter needs at least one directory below the
+      # folder, so it never matched the Resources, which all sit directly in it.
+      glob: '{app/Http/Resources/**.php,app/Http/Controllers/**.php,app/Http/Requests/**.php,app/Enums/**.php,routes/api.php}'
       run: npm run generate:types && git add resources/js/types/api/index.d.ts resources/js/types/api/schemas.ts
 
 # Heavyweight, whole-project checks run before push (not on every commit):
