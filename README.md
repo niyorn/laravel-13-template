@@ -68,6 +68,9 @@ composer install
 # JS dependencies
 npm install
 
+# Git hooks (formatting, linting, tests) — see the note below on why this is separate
+npx lefthook install
+
 # Environment file + app key
 cp .env.example .env
 php artisan key:generate
@@ -79,9 +82,29 @@ php artisan migrate
 composer dev
 ```
 
+`composer setup` runs all of the above in one go.
+
 Herd serves the site automatically at **https://laravel-template-13.test** — you don't
 need `php artisan serve`. `composer dev` runs Vite (asset hot-reload), the queue worker,
 and the log tail together.
+
+### `npx lefthook install` is a separate step on purpose
+
+`.npmrc` sets `ignore-scripts=true`, which stops a dependency's install script from running —
+that is where npm supply-chain attacks live. The trade-off is that npm also skips `prepare`,
+this project's own script, so `npm install` cannot set up the git hooks. Run the command above
+once per clone. Without it you get no Pint, no lint or format on commit, and no PHPStan,
+type-check or tests on push.
+
+### Set `APP_URL` to the host you actually browse
+
+`.env.example` ships with this template's Herd host. `Change it if you rename the project`, or
+copy it into a new one — Herd serves `<kebab-case-project-dir>.test`.
+
+It has to match, because Laravel derives Sanctum's stateful domains from `APP_URL`. Pages read
+their data from `api.php` using the session cookie, so if the host you browse is not in that
+list, every one of those calls comes back `401` and the page quietly falls back to its empty
+defaults. `npm run generate:types` reads `APP_URL` too.
 
 ## Common commands
 

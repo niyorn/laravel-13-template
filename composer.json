@@ -51,6 +51,7 @@
             "@php artisan key:generate",
             "@php artisan migrate --force",
             "npm install",
+            "npx lefthook install",
             "npm run build"
         ],
         "dev": [

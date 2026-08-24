@@ -22,7 +22,8 @@
         "AGENTS.md",
         "boost.json",
         ".claude/skills/**",
-        ".agents/skills/**"
+        ".agents/skills/**",
+        "resources/js/types/api/**"
     ],
     "overrides": [
         {
