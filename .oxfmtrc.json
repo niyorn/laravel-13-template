@@ -17,7 +17,12 @@
     "sortPackageJson": false,
     "ignorePatterns": [
         "resources/js/components/ui/*",
-        "resources/views/mail/*"
+        "resources/views/mail/*",
+        "CLAUDE.md",
+        "AGENTS.md",
+        "boost.json",
+        ".claude/skills/**",
+        ".agents/skills/**"
     ],
     "overrides": [
         {
