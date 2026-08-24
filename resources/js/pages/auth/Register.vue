@@ -8,12 +8,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
+import { useAuthConfig } from '@/composables/useAuthConfig';
 import { login } from '@/wayfinder/routes';
 import { store } from '@/wayfinder/routes/register';
 
-defineProps<{
-    passwordRules: string;
-}>();
+const { authConfig } = useAuthConfig();
 
 defineOptions({
     layout: {
@@ -71,7 +70,7 @@ defineOptions({
                     autocomplete="new-password"
                     name="password"
                     placeholder="Password"
-                    :passwordrules="passwordRules"
+                    :passwordrules="authConfig.passwordRules"
                 />
                 <InputError :message="errors.password" />
             </div>
@@ -85,7 +84,7 @@ defineOptions({
                     autocomplete="new-password"
                     name="password_confirmation"
                     placeholder="Confirm password"
-                    :passwordrules="passwordRules"
+                    :passwordrules="authConfig.passwordRules"
                 />
                 <InputError :message="errors.password_confirmation" />
             </div>

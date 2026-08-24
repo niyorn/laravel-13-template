@@ -9,6 +9,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
+import { useAuthConfig } from '@/composables/useAuthConfig';
 import { register } from '@/wayfinder/routes';
 import { store } from '@/wayfinder/routes/login';
 import { request } from '@/wayfinder/routes/password';
@@ -22,8 +23,9 @@ defineOptions({
 
 defineProps<{
     status?: string;
-    canResetPassword: boolean;
 }>();
+
+const { authConfig } = useAuthConfig();
 </script>
 
 <template>
@@ -62,7 +64,7 @@ defineProps<{
                 <div class="flex items-center justify-between">
                     <Label for="password">Password</Label>
                     <TextLink
-                        v-if="canResetPassword"
+                        v-if="authConfig.canResetPassword"
                         :href="request()"
                         class="text-sm"
                         :tabindex="5"

@@ -3,4 +3,6 @@
 
 import type { components } from './index';
 
+export type AuthConfig = components['schemas']['AuthConfig'];
+export type ProfileSettings = components['schemas']['ProfileSettings'];
 export type User = components['schemas']['User'];

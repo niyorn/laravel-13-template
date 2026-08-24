@@ -6,14 +6,11 @@ import InputError from '@/components/InputError.vue';
 import PasswordInput from '@/components/PasswordInput.vue';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { useAuthConfig } from '@/composables/useAuthConfig';
 import SecurityController from '@/wayfinder/App/Http/Controllers/Settings/SecurityController';
 import { edit } from '@/wayfinder/routes/security';
 
-type Props = {
-    passwordRules: string;
-};
-
-const props = defineProps<Props>();
+const { authConfig } = useAuthConfig();
 
 defineOptions({
     layout: {
@@ -73,7 +70,7 @@ defineOptions({
                     class="mt-1 block w-full"
                     autocomplete="new-password"
                     placeholder="New password"
-                    :passwordrules="props.passwordRules"
+                    :passwordrules="authConfig.passwordRules"
                 />
                 <InputError :message="errors.password" />
             </div>
@@ -86,7 +83,7 @@ defineOptions({
                     class="mt-1 block w-full"
                     autocomplete="new-password"
                     placeholder="Confirm password"
-                    :passwordrules="props.passwordRules"
+                    :passwordrules="authConfig.passwordRules"
                 />
                 <InputError :message="errors.password_confirmation" />
             </div>

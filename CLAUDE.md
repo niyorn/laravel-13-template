@@ -221,14 +221,62 @@ is meant to be exposed/consumed independently of the web UI.
 - `web.php` → Inertia page renders only (`Inertia::render(...)` returning a Vue page). Session + cookie
   auth, CSRF. Typed on the frontend by Wayfinder (`@/wayfinder/...`).
 - `api.php` → everything else: data fetches and mutations (create/update/delete), and anything a page
-  does after its initial load. Stateless JSON, token auth (Sanctum), returns API Resources. Typed on the
-  frontend by `@/types/api` (Scramble → openapi-typescript).
+  does after its initial load. JSON, and Sanctum accepts either the session cookie (`statefulApi()` is on,
+  so a page can call it straight away) or a token. Returns API Resources. Typed on the frontend by
+  `@/types/api` (Scramble → openapi-typescript).
 
 Rule of thumb: returns a rendered page → `web.php`; returns or accepts JSON → `api.php`.
 
 `Exception:` Fortify's session-auth routes (login, register, password, email verification, profile)
 are inherently web/session and stay on the web side. The "everything in `api.php`" rule is about your
 own domain endpoints, not the session-auth plumbing.
+
+## A page gets no data through Inertia props
+
+`Never pass page data to `Inertia::render()`. The page fetches its own data from `api.php`.` A
+controller's job is to say which Vue page to show and nothing more — `Inertia::render('settings/Security')`
+with no second argument is the shape to aim for. The data then has one home (an API Resource, typed by
+Scramble) instead of two, and the same endpoint serves anything else that needs it.
+
+```php
+// WRONG — the page now has a second, untyped source of truth
+return Inertia::render('settings/Security', [
+    'passwordRules' => Password::defaults()->toPasswordRulesString(),
+]);
+
+// RIGHT — the page asks api.php for it
+return Inertia::render('settings/Security');
+```
+
+```ts
+// resources/js/composables/useAuthConfig.ts — one composable per endpoint, reused by every page
+const http = useHttp<Record<string, never>, AuthConfig>();
+const { state: authConfig } = useAsyncState(() => http.get(config.url()), PENDING, {
+    onError: () => toast.error('Could not load the sign-in settings.'),
+});
+```
+
+Three things are `not` page data and stay as props, because Inertia has no other channel for them:
+
+| Stays | Why |
+| --- | --- |
+| `errors` (from `parent::share()`) | how Inertia reports a failed request — every `<Form v-slot="{ errors }">` reads it |
+| flash (`Inertia::flash('toast', …)`, `session('status')`) | read once and gone, so a second request cannot fetch it |
+| values that come from the URL | `ResetPassword`'s `token` and `email` arrive with the signed link |
+
+`Shared props stay too` — `auth.user`, `name` and `sidebarOpen` in `HandleInertiaRequests::share()`.
+The chrome that reads them (sidebar, header, user menu) is on screen before any fetch could land, so
+moving those to the API would only buy an empty header on every full page load.
+
+`Give the composable a PENDING default` covering the shape, so the page renders before the request
+lands rather than guarding every field with `v-if`.
+
+# Server-side rendering is off, deliberately
+
+`We do not render this app on the server, and nothing should turn that back on.` `config/inertia.php`
+has `ssr.enabled => false`, and `vite.config.ts` passes `inertia({ ssr: false })` — without that second
+one the Vite plugin picks up `resources/js/app.ts` as an SSR entry on its own and serves a render
+endpoint in dev. There is no `build:ssr` script and no `bootstrap/ssr` folder; don't add them back.
 
 # Wayfinder — running the `next`/beta branch
 

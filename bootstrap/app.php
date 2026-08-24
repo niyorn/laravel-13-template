@@ -18,6 +18,10 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->encryptCookies(except: ['appearance', 'sidebar_state']);
 
+        // Pages read their data from api.php, so those calls must be able to use the
+        // session cookie the page was already loaded with.
+        $middleware->statefulApi();
+
         $middleware->web(append: [
             HandleAppearance::class,
             HandleInertiaRequests::class,

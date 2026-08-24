@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
+import { useAuthConfig } from '@/composables/useAuthConfig';
 import { update } from '@/wayfinder/routes/password';
 
 defineOptions({
@@ -20,9 +21,9 @@ defineOptions({
 const props = defineProps<{
     token: string;
     email: string;
-    passwordRules: string;
 }>();
 
+const { authConfig } = useAuthConfig();
 const inputEmail = ref(props.email);
 </script>
 
@@ -59,7 +60,7 @@ const inputEmail = ref(props.email);
                     class="mt-1 block w-full"
                     autofocus
                     placeholder="Password"
-                    :passwordrules="passwordRules"
+                    :passwordrules="authConfig.passwordRules"
                 />
                 <InputError :message="errors.password" />
             </div>
@@ -72,7 +73,7 @@ const inputEmail = ref(props.email);
                     autocomplete="new-password"
                     class="mt-1 block w-full"
                     placeholder="Confirm password"
-                    :passwordrules="passwordRules"
+                    :passwordrules="authConfig.passwordRules"
                 />
                 <InputError :message="errors.password_confirmation" />
             </div>
