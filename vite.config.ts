@@ -17,7 +17,9 @@ export default defineConfig({
                 }),
             ],
         }),
-        inertia(),
+        // We never render on the server, so keep the plugin from picking up app.ts
+        // as an SSR entry and exposing its dev-mode render endpoint.
+        inertia({ ssr: false }),
         tailwindcss(),
         vue({
             template: {
