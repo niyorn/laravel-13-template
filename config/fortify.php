@@ -148,6 +148,7 @@ return [
         Features::registration(),
         Features::resetPasswords(),
         Features::emailVerification(),
+        // Two-factor is left out on purpose: the users table has no two_factor_* columns and User lacks the TwoFactorAuthenticatable trait.
     ],
 
 ];
