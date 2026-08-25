@@ -82,6 +82,9 @@
         "types:check": [
             "phpstan analyse"
         ],
+        "test:tia": [
+            "scripts/test-tia.sh --compact"
+        ],
         "test": [
             "@php artisan config:clear --ansi",
             "@lint:check",
