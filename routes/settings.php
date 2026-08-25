@@ -12,6 +12,7 @@ Route::middleware(['auth'])->group(function (): void {
     Route::patch('settings/profile', [ProfileController::class, 'update'])->name('profile.update');
 });
 
+// `verified` waves everyone through until User implements MustVerifyEmail, which is commented out in the model.
 Route::middleware(['auth', 'verified'])->group(function (): void {
     Route::delete('settings/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
