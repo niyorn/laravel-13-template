@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use App\Http\Controllers\Api\AuthConfigController;
 use App\Http\Controllers\Api\Settings\ProfileController;
 use Illuminate\Http\Request;

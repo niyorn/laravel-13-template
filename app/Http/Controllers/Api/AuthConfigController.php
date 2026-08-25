@@ -1,13 +1,14 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\Api;
 
-use App\Http\Controllers\Controller;
 use App\Http\Resources\AuthConfigResource;
 use Illuminate\Validation\Rules\Password;
 use Laravel\Fortify\Features;
 
-class AuthConfigController extends Controller
+final class AuthConfigController
 {
     /**
      * Get the auth settings the sign-in and sign-up screens render against.

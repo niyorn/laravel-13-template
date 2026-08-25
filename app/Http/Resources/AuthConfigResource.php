@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Resources;
 
 use Dedoc\Scramble\Attributes\SchemaName;
@@ -10,7 +12,7 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * The auth settings the login and registration screens need before anyone signs in.
  */
 #[SchemaName('AuthConfig')]
-class AuthConfigResource extends JsonResource
+final class AuthConfigResource extends JsonResource
 {
     /**
      * Transform the resource into an array.

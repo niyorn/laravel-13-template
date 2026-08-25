@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Resources;
 
 use Dedoc\Scramble\Attributes\SchemaName;
@@ -10,7 +12,7 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * The profile settings screen's own data, separate from the signed-in user itself.
  */
 #[SchemaName('ProfileSettings')]
-class ProfileSettingsResource extends JsonResource
+final class ProfileSettingsResource extends JsonResource
 {
     /**
      * Transform the resource into an array.
