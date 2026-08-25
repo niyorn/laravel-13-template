@@ -9,12 +9,23 @@ pre-commit:
       group:
         parallel: true
         jobs:
-          # PHP: format staged files with Pint. Independent of the frontend chain,
-          # so it runs in parallel with it.
-          - name: pint
-            glob: '*.php'
-            run: vendor/bin/pint {staged_files}
-            stage_fixed: true
+          # PHP: must run in order (piped) because both tools rewrite the same
+          # files — Rector refactors, Pint formats last. Independent of the
+          # frontend chain, so it runs in parallel with it. Rector's glob is
+          # narrowed to the paths in rector.php, which also keeps Blade files
+          # away from it — it reads them as plain PHP and would mangle them.
+          - name: php
+            group:
+              piped: true
+              jobs:
+                - name: rector
+                  glob: '{app,bootstrap,config,database,routes,tests}/**.php'
+                  run: vendor/bin/rector process {staged_files} --no-diffs
+                  stage_fixed: true
+                - name: pint
+                  glob: '*.php'
+                  run: vendor/bin/pint {staged_files}
+                  stage_fixed: true
 
           # Frontend: must run in order (piped) because all three tools rewrite the
           # same files — oxlint --fix, then eslint --fix (Vue templates), then oxfmt.

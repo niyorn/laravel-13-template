@@ -38,7 +38,7 @@ class UserFactory extends Factory
      */
     public function unverified(): static
     {
-        return $this->state(fn (array $attributes) => [
+        return $this->state(fn (array $attributes): array => [
             'email_verified_at' => null,
         ]);
     }
@@ -48,10 +48,10 @@ class UserFactory extends Factory
      */
     public function withTwoFactor(): static
     {
-        return $this->state(fn (array $attributes) => [
+        return $this->state(fn (array $attributes): array => [
             'two_factor_secret' => encrypt(Str::random(32)),
             'two_factor_recovery_codes' => encrypt(json_encode(
-                array_map(fn () => Str::random(10).'-'.Str::random(10), range(1, 8))
+                array_map(fn (): string => Str::random(10).'-'.Str::random(10), range(1, 8))
             )),
             'two_factor_confirmed_at' => now(),
         ]);

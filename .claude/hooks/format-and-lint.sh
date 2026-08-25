@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # PostToolUse hook: format + lint the single file Claude just edited.
 #
-# Formatters (pint, oxfmt) are idempotent — run them always, silently.
+# Formatters (pint, oxfmt) and Rector are idempotent — run them always, silently.
 # For JS/TS/Vue, oxlint --fix auto-corrects what it can; any remaining
 # (unfixable) errors are sent back to Claude via exit code 2 so it can
 # self-correct in the same turn. Slow/whole-project checks (phpstan,
@@ -18,10 +18,19 @@ cd "${CLAUDE_PROJECT_DIR:-.}" || exit 0
 OXFMT="node_modules/.bin/oxfmt"
 OXLINT="node_modules/.bin/oxlint"
 PINT="vendor/bin/pint"
+RECTOR="vendor/bin/rector"
 
 case "${file_path##*.}" in
     php)
-        # Format only. PHP static analysis (phpstan) is a pre-push concern.
+        # Rector rewrites, then Pint formats — same order as the frontend chain.
+        # PHP static analysis (phpstan) stays a pre-push concern.
+        case "${file_path#"$PWD"/}" in
+            # Rector reads Blade as plain PHP and would mangle it.
+            *.blade.php) ;;
+            app/* | bootstrap/* | config/* | database/* | routes/* | tests/*)
+                [ -x "$RECTOR" ] && "$RECTOR" process "$file_path" --no-diffs >/dev/null 2>&1
+                ;;
+        esac
         [ -x "$PINT" ] && "$PINT" "$file_path" >/dev/null 2>&1
         ;;
     js | ts | jsx | tsx | vue | mjs | cjs)

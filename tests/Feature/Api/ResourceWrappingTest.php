@@ -3,8 +3,8 @@
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\Route;
 
-test('API resources are returned without a data wrapper', function () {
-    Route::get('/_test/resource', fn () => new class(['id' => 1, 'name' => 'Ada']) extends JsonResource
+test('API resources are returned without a data wrapper', function (): void {
+    Route::get('/_test/resource', fn (): JsonResource => new class(['id' => 1, 'name' => 'Ada']) extends JsonResource
     {
         /** @return array<string, mixed> */
         public function toArray($request): array
