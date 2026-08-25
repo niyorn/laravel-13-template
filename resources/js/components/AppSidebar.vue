@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { Link } from '@inertiajs/vue3';
+import { Link, router } from '@inertiajs/vue3';
 import { BookOpen, FolderGit2, LayoutGrid } from '@lucide/vue';
+import { onUnmounted } from 'vue';
 
 import AppLogo from '@/components/AppLogo.vue';
 import NavFooter from '@/components/NavFooter.vue';
@@ -14,6 +15,7 @@ import {
     SidebarMenu,
     SidebarMenuButton,
     SidebarMenuItem,
+    useSidebar,
 } from '@/components/ui/sidebar';
 import type { NavItem } from '@/types';
 import { dashboard } from '@/wayfinder/routes';
@@ -25,6 +27,11 @@ const mainNavItems: NavItem[] = [
         icon: LayoutGrid,
     },
 ];
+
+const { setOpenMobile } = useSidebar();
+
+// On mobile the sidebar is a sheet on top of the page, so it has to get out of the way once the new page loads.
+onUnmounted(router.on('navigate', () => setOpenMobile(false)));
 
 const footerNavItems: NavItem[] = [
     {
