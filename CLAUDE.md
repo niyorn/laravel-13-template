@@ -601,3 +601,27 @@ that genuinely depend on the viewport rather than the component's own box (e.g. 
 shell, the app sidebar collapse breakpoint, or device-level layout switches). If you find yourself
 reaching for a media-query variant inside a reusable component, stop and use a container query
 instead.
+
+## Viewport units — always `dvh` / `dvw`, never `vh` / `vw`
+
+`Use the dynamic viewport units everywhere.` On mobile, `vh` is frozen at the *largest* viewport
+(browser chrome hidden), so a `100vh` box is taller than the screen and its bottom sits under the
+address bar until the user scrolls. `dvh` shrinks and grows with the visible area, so the box always
+fits.
+
+| Want | Use | Never |
+| --- | --- | --- |
+| Full height | `h-dvh`, `min-h-dvh`, `max-h-dvh` | `h-screen`, `min-h-screen`, `min-h-[100vh]` |
+| Full width | `w-dvw`, `min-w-dvw`, `max-w-dvw` | `w-screen`, `w-[100vw]` |
+| Raw CSS | `height: 100dvh` | `height: 100vh` |
+
+Tailwind v4 ships `*-dvh` / `*-dvw` out of the box, so there is no arbitrary value to write. Note
+that `h-screen` is `100vh`, not `100dvh` — that utility is on the banned list for the same reason.
+
+`The root layout backs this up.` `resources/views/app.blade.php` sets
+`interactive-widget=resizes-content` on the viewport meta tag, so an opening on-screen keyboard
+shrinks the layout instead of scrolling it off-screen — which only works if the layout is sized in
+`dvh` to begin with.
+
+Only reach for `svh` / `lvh` when you specifically want the smallest or largest viewport pinned (a
+sticky bar that must not jump while scrolling). `dvh` is the default; those two are the exceptions.
