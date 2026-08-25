@@ -2,6 +2,17 @@
 
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
+use Inertia\Testing\AssertableInertia as Assert;
+
+test('security page is displayed', function (): void {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->withSession(['auth.password_confirmed_at' => time()])
+        ->get(route('security.edit'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page): Assert => $page->component('settings/Security'));
+});
 
 test('password can be updated', function (): void {
     $user = User::factory()->create();
