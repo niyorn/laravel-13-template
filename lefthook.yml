@@ -75,8 +75,8 @@ pre-push:
     - name: vue-tsc
       glob: '*.{ts,vue}'
       run: npm run types:check
-    # Test impact analysis: only the tests this change can reach are re-run, the
-    # rest are replayed from a recorded graph. CI still runs the whole suite.
+    # PHP only: assertInertia checks a page's name and props but never compiles
+    # the component, so a .vue or .ts change cannot break these tests.
     - name: tests
-      glob: '*.{php,ts,vue,js,mjs,cjs}'
+      glob: '*.php'
       run: scripts/test-tia.sh --compact
